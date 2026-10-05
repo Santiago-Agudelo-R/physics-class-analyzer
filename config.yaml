@@ -1,0 +1,41 @@
+# Physics Class Analyzer - Configuración
+app:
+  name: "Physics Class Analyzer"
+  version: "1.0.0"
+  language: "es"
+
+paths:
+  output_dir: "./output"
+  cache_dir_name: "cache"
+
+segmentation:
+  target_duration_minutes: 10
+  min_duration_minutes: 5
+  max_duration_minutes: 15
+  overlap_seconds: 30
+
+transcription:
+  whisper_model: "base"
+  device: "cpu"
+  language: "es"
+
+llm:
+  provider: "mock"           # "mock", "ollama", "openai"
+  model: "llama3.2"          # Para ollama: "llama3.2", "mistral", "qwen2.5", "deepseek-r1"
+  temperature: 0.1
+  timeout: 120
+  ollama:
+    host: "http://localhost:11434"
+  openai:
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-4o-mini"
+
+documents:
+  generate_docx: true
+  generate_pdf: true
+  generate_mindmap: true
+  export_json: true
+
+analysis:
+  modern_physics_domain: true
+  strict_hallucination_guard: true

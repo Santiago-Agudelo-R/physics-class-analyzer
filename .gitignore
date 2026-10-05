@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environment and secrets
+.env
+*.env
+
+# Outputs and media recordings
+output/
+*.mp4
+*.m4a
+*.mp3
+*.wav
+*.avi
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Editor artifacts
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
