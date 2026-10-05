@@ -2,7 +2,7 @@
 
 Multimodal Python processing pipeline for transcribing, segmenting, extracting mathematical formulations, and generating structured study guides from university-level modern physics lectures.
 
-[![Tests](https://github.com/Titaaron/physics-class-analyzer/actions/workflows/tests.yml/badge.svg)](https://github.com/Titaaron/physics-class-analyzer/actions)
+[![Tests](https://github.com/Santiago-Agudelo-R/physics-class-analyzer/actions/workflows/tests.yml/badge.svg)](https://github.com/Santiago-Agudelo-R/physics-class-analyzer/actions)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
