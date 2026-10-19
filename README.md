@@ -105,9 +105,11 @@ transcripcion.json     analisis.json         ecuaciones.json
 problemas.json         sintesis.json
 ```
 
-### Sample Data
+### Sample Data & Mock Provider
 
-`data/sample/` contains a **synthetic** lecture transcript and slide deck created for this repository. They do not come from a real class and contain no personal data.
+`data/sample/` contains a **synthetic** electromagnetism lecture transcript (`sample_lecture.docx`) and slide deck (`sample_slides.pdf`) created for this repository. They do not come from a real class and contain no personal data.
+
+When running with `--provider mock`, `MockProvider` returns deterministic segmentation, LaTeX equations, and worked problem outputs tailored to those sample electromagnetism topics so the full DOCX/PDF/Mermaid pipeline and test suite can be verified offline without an LLM API key or local GPU. For arbitrary new lectures, use `--provider ollama` or `--provider openai`.
 
 ---
 
