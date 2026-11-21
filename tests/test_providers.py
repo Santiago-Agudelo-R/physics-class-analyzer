@@ -65,11 +65,13 @@ def test_segment_analyzer_with_stub_llm_provider():
     chunks = [
         ClassChunk(
             chunk_id=1,
-            start_sec=0.0,
-            end_sec=300.0,
+            start=0.0,
+            end=300.0,
             start_str="00:00",
             end_str="05:00",
+            duration_minutes=5.0,
             text="Clase sobre cuerpo negro.",
+            raw_segments_count=1,
             context_prefix="",
         )
     ]
