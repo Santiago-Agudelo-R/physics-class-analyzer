@@ -10,7 +10,7 @@ Multimodal Python processing pipeline for transcribing, segmenting, extracting m
 
 ## Overview
 
-University physics lectures contain complex mathematical derivations, spoken explanations, and board exercises that are difficult to consolidate manually. `Physics Class Analyzer` is an automated processing engine that ingests lecture recordings (video/audio) or transcripts (DOCX/PDF/TXT) and produces publication-quality study guides with:
+University physics lectures contain complex mathematical derivations, spoken explanations, and board exercises that are difficult to consolidate manually. `Physics Class Analyzer` is an automated processing engine that ingests lecture recordings (video/audio) or transcripts (DOCX/PDF/TXT) and produces structured DOCX and PDF study guides with:
 
 - Chronological lecture segmentation and topic boundary detection.
 - Mathematical equation parsing and extraction formatted in LaTeX.

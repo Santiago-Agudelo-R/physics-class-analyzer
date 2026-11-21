@@ -19,6 +19,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from PIL import Image as PILImage
 
 from ..visualization.math_renderer import MathRenderer
+from xml.sax.saxutils import escape as xml_escape
 
 
 class PdfStudyGuideBuilder:
@@ -160,7 +161,7 @@ class PdfStudyGuideBuilder:
         clean_title = MathRenderer.clean_text_for_pdf(title)
         story.append(Paragraph("GUÍA DE ESTUDIO UNIVERSITARIA", ParagraphStyle("TopSub", fontName=cls._BOLD_FONT, textColor=cls.BLUE, fontSize=10, alignment=1)))
         story.append(Paragraph(clean_title, title_style))
-        story.append(Paragraph(f"Física Moderna • {class_name}", subtitle_style))
+        story.append(Paragraph(f"Física Moderna • {xml_escape(str(class_name))}", subtitle_style))
         story.append(Spacer(1, 6))
 
         # 1. Resumen Ejecutivo
@@ -205,7 +206,7 @@ class PdfStudyGuideBuilder:
         ]
 
         for eq in equations[:8]:
-            ts = f" [{eq.get('timestamp')}]" if eq.get("timestamp") else ""
+            ts = f" [{xml_escape(str(eq.get('timestamp')))}]" if eq.get("timestamp") else ""
             clean_name = MathRenderer.clean_text_for_pdf(eq.get("name", ""))
             name_p = Paragraph(f"<b>{clean_name}</b>{ts}", body_style)
 
@@ -220,7 +221,7 @@ class PdfStudyGuideBuilder:
                 target_w = min(190.0, pw * (target_h / ph) if ph > 0 else 100.0)
                 math_element = RLImage(str(img_path), width=target_w, height=target_h)
             else:
-                math_element = Paragraph(f"<code>{latex}</code>", body_style)
+                math_element = Paragraph(f"<code>{xml_escape(latex)}</code>", body_style)
 
             clean_vars = MathRenderer.clean_text_for_pdf(eq.get("variables", ""))
             clean_when = MathRenderer.clean_text_for_pdf(eq.get("when_to_use", ""))

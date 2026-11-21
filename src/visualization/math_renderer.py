@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 import matplotlib.mathtext as mathtext
 from PIL import Image
+from xml.sax.saxutils import escape as xml_escape
 
 
 class MathRenderer:
@@ -92,7 +93,10 @@ class MathRenderer:
         if not text:
             return ""
 
-        s = str(text)
+        # ReportLab parses Paragraph text as markup. Escape &, < and > first so physics notation
+        # such as "0<x<L" (or any LLM output) cannot break the document; the <sub>/<sup> tags
+        # added below are the only markup that reaches the renderer.
+        s = xml_escape(str(text))
 
         # Remove emojis that standard TrueType fonts don't have (prevents empty square tofu)
         emoji_replacements = {
