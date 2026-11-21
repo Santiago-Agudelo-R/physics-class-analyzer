@@ -6,6 +6,7 @@ from pathlib import Path
 from src.analysis.segment_analyzer import SegmentAnalyzer
 from src.providers.base import LLMProvider
 from src.providers.offline_mock import OfflineMockProvider
+from src.segmentation.chunker import ClassChunk
 from src.visualization.mindmap import MindmapGenerator
 
 
@@ -61,13 +62,24 @@ def test_segment_analyzer_with_stub_llm_provider():
     ```"""
     stub = StubLLMProvider(raw_llm_output)
     analyzer = SegmentAnalyzer(provider=stub)
-    segments = [{"segment_id": 1, "start_min": 0.0, "end_min": 5.0, "text": "Clase sobre cuerpo negro."}]
-    analyzed = analyzer.analyze_segments(segments)
+    chunks = [
+        ClassChunk(
+            chunk_id=1,
+            start_sec=0.0,
+            end_sec=300.0,
+            start_str="00:00",
+            end_str="05:00",
+            text="Clase sobre cuerpo negro.",
+            context_prefix="",
+        )
+    ]
+    analyzed = analyzer.analyze_all(chunks)
 
     assert len(stub.calls) == 1
     assert len(analyzed) == 1
-    assert analyzed[0]["analysis"]["topics"] == ["Radiación de Cuerpo Negro"]
-    assert analyzed[0]["analysis"]["key_concepts"][0]["title"] == "Ley de Wien"
+    assert analyzed[0]["topics"] == ["Radiación de Cuerpo Negro"]
+    assert analyzed[0]["key_concepts"][0]["title"] == "Ley de Wien"
+    assert analyzed[0]["chunk_id"] == 1
 
 
 def test_mindmap_html_escapes_xss_payloads_and_enforces_strict_mermaid(tmp_path: Path):
