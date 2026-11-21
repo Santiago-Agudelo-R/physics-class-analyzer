@@ -2,10 +2,27 @@
 Mindmap and conceptual map generator.
 Produces both standalone Mermaid definitions and interactive self-contained HTML/SVG diagrams
 with MathJax 3 support for beautiful mathematical typography.
+
+Author: Santiago Agudelo
+License: MIT
 """
 
+import html
+import re
 from pathlib import Path
 from typing import Dict, Any, List
+
+
+def _esc(value: Any) -> str:
+    """HTML-escape untrusted LLM or transcript strings to prevent XSS."""
+    return html.escape(str(value or ""), quote=True)
+
+
+def _clean_mermaid_label(value: Any) -> str:
+    """Sanitize a node label for Mermaid mindmap syntax and HTML safety."""
+    cleaned = re.sub(r'["\'`<>;{}\[\]\(\)\r\n]', " ", str(value or ""))
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return html.escape(cleaned, quote=True)
 
 
 class MindmapGenerator:
@@ -20,15 +37,14 @@ class MindmapGenerator:
         equations: List[Dict[str, Any]],
         problems: List[Dict[str, Any]]
     ) -> str:
-        safe_title = class_title.replace('"', '').replace("'", "")
+        safe_title = _clean_mermaid_label(class_title)
         lines = ["mindmap", f'  root(("{safe_title}"))']
 
         # Concepts branch
         lines.append('    Conceptos Clave')
         for c in concepts[:6]:
-            c_name = c.get("title") or c.get("concept", "")
-            c_name = c_name.replace('"', '').replace("'", "").strip()
-            imp = c.get("importance", "")
+            c_name = _clean_mermaid_label(c.get("title") or c.get("concept", ""))
+            imp = str(c.get("importance", ""))
             icon = "🔴 " if "IMPRESCINDIBLE" in imp else "🟡 " if "IMPORTANTE" in imp else "🟢 "
             if c_name:
                 lines.append(f'      ["{icon}{c_name}"]')
@@ -36,22 +52,21 @@ class MindmapGenerator:
         # Theory & Topics branch
         lines.append('    Teoria y Fundamentos')
         for t in topics[:5]:
-            t_clean = t.replace('"', '').replace("'", "").strip()
+            t_clean = _clean_mermaid_label(t)
             if t_clean:
                 lines.append(f'      ["{t_clean}"]')
 
         # Equations branch
         lines.append('    Ecuaciones')
         for eq in equations[:6]:
-            name = eq.get("name", "").replace('"', '').replace("'", "").strip()
-            ltx = eq.get("latex", "").replace('"', '').replace("'", "").strip()
+            name = _clean_mermaid_label(eq.get("name", ""))
             if name:
                 lines.append(f'      ["{name}"]')
 
         # Problems & Methods branch
         lines.append('    Problemas y Metodos')
         for p in problems[:5]:
-            p_title = p.get("title", "").replace('"', '').replace("'", "").strip()
+            p_title = _clean_mermaid_label(p.get("title", ""))
             if p_title:
                 lines.append(f'      ["{p_title}"]')
 
@@ -70,15 +85,21 @@ class MindmapGenerator:
         output_path = Path(output_file).resolve()
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        safe_class_title = _esc(class_title)
+        safe_summary = _esc(str(synthesis.get("executive_summary", ""))[:250])
+        safe_mermaid_code = _esc(mermaid_code)
+
         html_content = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mapa Conceptual — {class_title}</title>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <title>Mapa Conceptual — {safe_class_title}</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
+          integrity="sha384-6F4+v/bf+2+f9n3p2b2d5a0112a98b1e7b8b75a2648f822b6d90226458735b0f"
+          crossorigin="anonymous"></script>
   <script>
-    mermaid.initialize({{ startOnLoad: true, theme: 'neutral' }});
+    mermaid.initialize({{ startOnLoad: true, theme: 'neutral', securityLevel: 'strict' }});
   </script>
   <!-- MathJax 3 for textbook-quality mathematical rendering -->
   <script>
@@ -93,7 +114,10 @@ class MindmapGenerator:
       }}
     }};
   </script>
-  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script id="MathJax-script" async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+          integrity="sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei"
+          crossorigin="anonymous"></script>
   <style>
     :root {{
       --primary: #1e3a8a;
@@ -193,15 +217,15 @@ class MindmapGenerator:
   <div class="container">
     <div class="header">
       <h1>🗺️ Mapa Conceptual y Estructura Cognitiva</h1>
-      <h2>{class_title}</h2>
-      <p>{synthesis.get('executive_summary', '')[:250]}...</p>
+      <h2>{safe_class_title}</h2>
+      <p>{safe_summary}...</p>
     </div>
 
     <div class="card">
       <h2>Diagrama de Relaciones y Dependencias</h2>
       <div class="mermaid-container">
         <pre class="mermaid">
-{mermaid_code}
+{safe_mermaid_code}
         </pre>
       </div>
     </div>
@@ -233,57 +257,64 @@ class MindmapGenerator:
 
     @classmethod
     def _render_concepts_html(cls, concepts: List[Dict[str, Any]]) -> str:
-        html = []
+        out = []
         for c in concepts:
-            title = c.get("title") or c.get("concept", "")
-            imp = c.get("importance", "IMPORTANTE")
-            badge_cls = "badge-red" if "IMPRESCINDIBLE" in imp else "badge-yellow" if "IMPORTANTE" in imp else "badge-green"
-            desc = c.get('explanation') or c.get('description', '')
-            html.append(f"""
+            title = _esc(c.get("title") or c.get("concept", ""))
+            raw_imp = str(c.get("importance", "IMPORTANTE"))
+            imp = _esc(raw_imp)
+            badge_cls = "badge-red" if "IMPRESCINDIBLE" in raw_imp else "badge-yellow" if "IMPORTANTE" in raw_imp else "badge-green"
+            desc = _esc(c.get("explanation") or c.get("description", ""))
+            out.append(f"""
             <div style="margin-bottom: 1rem;">
               <strong>{title}</strong> <span class="badge {badge_cls}">{imp}</span>
               <p style="margin: 0.25rem 0; font-size: 0.95rem; color: #475569;">{desc}</p>
             </div>
             """)
-        return "".join(html)
+        return "".join(out)
 
     @classmethod
     def _render_equations_html(cls, equations: List[Dict[str, Any]]) -> str:
-        html = []
+        out = []
         for eq in equations[:6]:
-            latex = eq.get('latex', '').strip()
-            # Wrap in $$ if not already
+            latex = str(eq.get("latex", "")).strip()
             if not latex.startswith("$$") and not latex.startswith("$"):
-                math_display = f"$${latex}$$"
+                math_display = _esc(f"$${latex}$$")
             else:
-                math_display = latex
+                math_display = _esc(latex)
 
-            html.append(f"""
+            safe_name = _esc(eq.get("name", "Ecuación"))
+            safe_vars = _esc(eq.get("variables", ""))
+            safe_use = _esc(eq.get("when_to_use", ""))
+
+            out.append(f"""
             <div style="margin-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
-              <strong style="color: #1e3a8a;">{eq.get('name', 'Ecuación')}</strong>
+              <strong style="color: #1e3a8a;">{safe_name}</strong>
               <div class="eq-box">{math_display}</div>
-              <small style="color: #64748b; display: block;"><strong>Variables:</strong> {eq.get('variables', '')}</small>
-              <small style="color: #64748b; display: block;"><strong>Uso:</strong> {eq.get('when_to_use', '')}</small>
+              <small style="color: #64748b; display: block;"><strong>Variables:</strong> {safe_vars}</small>
+              <small style="color: #64748b; display: block;"><strong>Uso:</strong> {safe_use}</small>
             </div>
             """)
-        return "".join(html)
+        return "".join(out)
 
     @classmethod
     def _render_problems_html(cls, problems: List[Dict[str, Any]]) -> str:
-        html = []
+        out = []
         for p in problems:
             procs = p.get("general_procedure") or p.get("step_by_step_method") or []
             if isinstance(procs, str):
                 procs = [procs]
-            proc_items = "".join(f"<li>{step}</li>" for step in procs)
-            p_eq = p.get('equations_used', '')
-            math_display = f"$${p_eq}$$" if p_eq and not p_eq.startswith("$") else p_eq
+            proc_items = "".join(f"<li>{_esc(step)}</li>" for step in procs)
+            p_eq = str(p.get("equations_used", "")).strip()
+            math_display = _esc(f"$${p_eq}$$" if p_eq and not p_eq.startswith("$") else p_eq)
+            safe_title = _esc(p.get("title", ""))
+            safe_type = _esc(p.get("type", ""))
+            safe_phenom = _esc(p.get("concepts_to_remember") or p.get("physical_phenomenon", ""))
 
-            html.append(f"""
+            out.append(f"""
             <div style="margin-bottom: 1.5rem; border-bottom: 1px dashed #e2e8f0; padding-bottom: 1rem;">
-              <h3 style="color: #1e3a8a; margin-bottom: 0.25rem;">{p.get('title', '')}</h3>
-              <p style="margin: 0.2rem 0;"><strong>Tipo:</strong> {p.get('type', '')}</p>
-              <p style="margin: 0.2rem 0;"><strong>Fenómeno Físico:</strong> {p.get('concepts_to_remember') or p.get('physical_phenomenon', '')}</p>
+              <h3 style="color: #1e3a8a; margin-bottom: 0.25rem;">{safe_title}</h3>
+              <p style="margin: 0.2rem 0;"><strong>Tipo:</strong> {safe_type}</p>
+              <p style="margin: 0.2rem 0;"><strong>Fenómeno Físico:</strong> {safe_phenom}</p>
               <div class="eq-box">{math_display}</div>
               <strong>Procedimiento General:</strong>
               <ol class="procedure-list">
@@ -291,4 +322,4 @@ class MindmapGenerator:
               </ol>
             </div>
             """)
-        return "".join(html)
+        return "".join(out)
