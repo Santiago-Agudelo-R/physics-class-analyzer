@@ -155,3 +155,41 @@ def test_offline_mock_provider():
     assert len(result["equations"]) >= 1
     assert len(result["problems"]) >= 1
     assert "LaTeX" in str(result) or "latex" in str(result)
+
+
+def test_cdn_scripts_use_valid_pinned_sri_hashes(tmp_path: Path):
+    """SRI values must be real SHA-384 digests of the pinned CDN files.
+
+    Hashes were computed from the published npm tarballs (jsDelivr serves them byte-for-byte):
+      openssl dgst -sha384 -binary package/dist/mermaid.min.js | base64
+    A malformed or invented hash makes the browser silently refuse the script.
+    """
+    import base64
+    import re
+
+    expected = {
+        "mermaid@10.9.1/dist/mermaid.min.js":
+            "sha384-WmdflGW9aGfoBdHc4rRyWzYuAjEmDwMdGdiPNacbwfGKxBW/SO6guzuQ76qjnSlr",
+        "mathjax@3.2.2/es5/tex-mml-chtml.js":
+            "sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei",
+    }
+
+    out_file = tmp_path / "mapa_sri.html"
+    MindmapGenerator.generate_html(
+        class_title="SRI",
+        mermaid_code="graph TD; A-->B",
+        synthesis={"executive_summary": "", "core_concepts": []},
+        equations=[],
+        problems=[],
+        output_file=out_file,
+    )
+    rendered = out_file.read_text(encoding="utf-8")
+
+    for script_path, sri in expected.items():
+        pattern = re.escape(script_path) + r'"\s+integrity="([^"]+)"'
+        match = re.search(pattern, rendered)
+        assert match, f"missing integrity attribute for {script_path}"
+        assert match.group(1) == sri
+
+        digest = base64.b64decode(sri.split("-", 1)[1], validate=True)
+        assert len(digest) == 48, "SHA-384 digests are 48 bytes"

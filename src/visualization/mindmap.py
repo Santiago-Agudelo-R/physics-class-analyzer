@@ -96,7 +96,7 @@ class MindmapGenerator:
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mapa Conceptual — {safe_class_title}</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
-          integrity="sha384-6F4+v/bf+2+f9n3p2b2d5a0112a98b1e7b8b75a2648f822b6d90226458735b0f"
+          integrity="sha384-WmdflGW9aGfoBdHc4rRyWzYuAjEmDwMdGdiPNacbwfGKxBW/SO6guzuQ76qjnSlr"
           crossorigin="anonymous"></script>
   <script>
     mermaid.initialize({{ startOnLoad: true, theme: 'neutral', securityLevel: 'strict' }});
